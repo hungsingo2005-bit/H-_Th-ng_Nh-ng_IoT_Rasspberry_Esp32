@@ -1,0 +1,62 @@
+from flask import Flask, request, jsonify
+from deepface import DeepFace
+import cv2
+import numpy as np
+
+app = Flask(__name__)
+
+# ================= ROOT TEST =================
+@app.route('/')
+def home():
+    return "AI Server Dang Chay OK!"
+
+# ================= ANALYZE EMOTION =================
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        # nhận file ảnh từ ESP32-CAM
+        file = request.files.get('file')
+
+        if file is None:
+            return jsonify({"status": "error", "message": "No file"}), 400
+
+        # chuyển ảnh sang OpenCV
+        npimg = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return jsonify({"status": "error", "message": "Invalid image"}), 400
+
+        # ===== AI PHÂN TÍCH =====
+        result = DeepFace.analyze(
+            img,
+            actions=['emotion'],
+            enforce_detection=False   # 🔥 tránh crash nếu không thấy mặt
+        )
+
+        # lấy emotion chính
+        emotion = result[0]['dominant_emotion']
+
+        # debug trên terminal
+        print("==== AI RESULT ====")
+        print("Emotion:", emotion)
+        print("===================")
+
+        # trả về JSON cho ESP32-CAM
+        return jsonify({
+            "status": "success",
+            "emotion": emotion
+        })
+
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        })
+
+# ================= RUN SERVER =================
+if __name__ == '__main__':
+    print("🔥 AI Server Dang Khoi Dong...")
+    print("👉 http://127.0.0.1:5000")
+    app.run(host='0.0.0.0', port=5000)

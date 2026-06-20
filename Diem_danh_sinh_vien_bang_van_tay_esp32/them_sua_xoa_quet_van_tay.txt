@@ -1,0 +1,203 @@
+#include <Adafruit_Fingerprint.h>
+
+HardwareSerial mySerial(2);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+#define LED_PIN 2
+
+int nextID = 1; // ID tự tăng
+
+// ================= SETUP =================
+void setup() {
+  Serial.begin(115200);
+  mySerial.begin(57600, SERIAL_8N1, 16, 17);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  finger.begin(57600);
+
+  if (finger.verifyPassword()) {
+    Serial.println("Hệ thống sẵn sàng!");
+  } else {
+    Serial.println("Lỗi kết nối cảm biến!");
+    while (1);
+  }
+
+  menu();
+}
+
+// ================= LOOP =================
+void loop() {
+  if (Serial.available()) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    int choice = input.toInt();
+
+    switch (choice) {
+      case 1:
+        addFingerprintAuto();
+        break;
+      case 2:
+        deleteFingerprint();
+        break;
+      case 3:
+        scanFingerprint();
+        break;
+      case 4:
+        listFingerprint();
+        break;
+      default:
+        Serial.println("Lệnh không hợp lệ!");
+    }
+
+    menu();
+  }
+}
+
+// ================= MENU =================
+void menu() {
+  Serial.println("\n===== MENU =====");
+  Serial.println("1. Thêm vân tay (Auto ID)");
+  Serial.println("2. Xóa vân tay");
+  Serial.println("3. Quét vân tay");
+  Serial.println("4. Xem danh sách ID");
+  Serial.println("================");
+}
+
+// ================= TÌM ID TRỐNG =================
+int getNextFreeID() {
+  for (int id = 1; id <= 127; id++) {
+    if (finger.loadModel(id) != FINGERPRINT_OK) {
+      return id;
+    }
+  }
+  return -1;
+}
+
+// ================= THÊM VÂN TAY AUTO =================
+void addFingerprintAuto() {
+  int id = getNextFreeID();
+
+  if (id == -1) {
+    Serial.println("Bộ nhớ đầy!");
+    return;
+  }
+
+  Serial.print("ID tự động: ");
+  if (id < 10) Serial.print("00");
+  else if (id < 100) Serial.print("0");
+  Serial.println(id);
+
+  int p = -1;
+  Serial.println("Đặt ngón tay vào lần 1");
+
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  }
+
+  finger.image2Tz(1);
+
+  Serial.println("Nhấc tay ra...");
+  delay(2000);
+
+  while (finger.getImage() != FINGERPRINT_NOFINGER);
+
+  Serial.println("Đặt lại ngón tay lần 2");
+  p = -1;
+
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  }
+
+  finger.image2Tz(2);
+
+  if (finger.createModel() != FINGERPRINT_OK) {
+    Serial.println("Lỗi tạo mẫu!");
+    return;
+  }
+
+  if (finger.storeModel(id) == FINGERPRINT_OK) {
+    Serial.println("Thêm thành công!");
+  } else {
+    Serial.println("Lỗi lưu!");
+  }
+  delay(2000);
+}
+
+// ================= XÓA =================
+void deleteFingerprint() {
+  Serial.println("Nhập ID cần xóa: ");
+
+  String input = "";
+
+  while (input.length() == 0) {
+    if (Serial.available()) {
+      input = Serial.readStringUntil('\n');
+      input.trim();
+    }
+  }
+
+  int id = input.toInt();
+
+  if (finger.deleteModel(id) == FINGERPRINT_OK) {
+    Serial.println("Xóa thành công!");
+  } else {
+    Serial.println("Không tìm thấy ID!");
+  }
+}
+
+// ================= QUÉT =================
+void scanFingerprint() {
+  Serial.println("Đặt ngón tay để quét...");
+
+  int p = -1;
+
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  }
+
+  if (finger.image2Tz() != FINGERPRINT_OK) {
+    Serial.println("Lỗi xử lý ảnh!");
+    return;
+  }
+
+  if (finger.fingerSearch() != FINGERPRINT_OK) {
+    Serial.println("Sai vân tay!");
+    return;
+  }
+
+  Serial.print("Đúng! ID: ");
+  if (finger.fingerID < 10) Serial.print("00");
+  else if (finger.fingerID < 100) Serial.print("0");
+  Serial.println(finger.fingerID);
+
+  // ===== BẬT LED =====
+  digitalWrite(LED_PIN, HIGH);
+  Serial.println("LED ON");
+
+  delay(3000);
+
+  // ===== TẮT LED =====
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("LED OFF");
+
+  delay(2000);
+  while (finger.getImage() != FINGERPRINT_NOFINGER);
+}
+
+// ================= DANH SÁCH =================
+void listFingerprint() {
+  Serial.println("Danh sách ID đã lưu:");
+
+  for (int id = 1; id <= 127; id++) {
+    if (finger.loadModel(id) == FINGERPRINT_OK) {
+      if (id < 10) Serial.print("00");
+      else if (id < 100) Serial.print("0");
+      Serial.println(id);
+    }
+  }
+
+  Serial.println("----- Hết -----");
+}

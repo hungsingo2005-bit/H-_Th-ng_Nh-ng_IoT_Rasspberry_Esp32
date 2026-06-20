@@ -1,0 +1,76 @@
+#include <Adafruit_Fingerprint.h>
+
+HardwareSerial mySerial(2);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+uint8_t id;
+
+void setup() {
+  Serial.begin(115200);
+  mySerial.begin(57600, SERIAL_8N1, 16, 17);
+
+  Serial.println("=== THEM VAN TAY ===");
+
+  finger.begin(57600);
+
+  if (finger.verifyPassword()) {
+    Serial.println("Cam bien OK");
+  } else {
+    Serial.println("Khong tim thay cam bien");
+    while (1);
+  }
+
+  Serial.println("Nhap ID (1-127): ");
+  while (!Serial.available()); 
+  id = Serial.parseInt();
+  Serial.print("Dang them ID: ");
+  Serial.println(id);
+}
+
+void loop() {
+  enrollFingerprint();
+}
+
+void enrollFingerprint() {
+  int p = -1;
+  Serial.println("Dat ngon tay vao...");
+  
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  }
+
+  Serial.println("Da chup lan 1");
+  p = finger.image2Tz(1);
+  if (p != FINGERPRINT_OK) return;
+
+  Serial.println("Nhat tay ra...");
+  delay(2000);
+  while (finger.getImage() != FINGERPRINT_NOFINGER);
+
+  Serial.println("Dat lai ngon tay...");
+  p = -1;
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+  }
+
+  Serial.println("Da chup lan 2");
+  p = finger.image2Tz(2);
+  if (p != FINGERPRINT_OK) return;
+
+  Serial.println("Dang tao model...");
+  p = finger.createModel();
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Loi tao model");
+    return;
+  }
+
+  Serial.println("Dang luu...");
+  p = finger.storeModel(id);
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Them thanh cong!");
+  } else {
+    Serial.println("Loi luu");
+  }
+
+  while (1); // dừng lại sau khi lưu xong
+}

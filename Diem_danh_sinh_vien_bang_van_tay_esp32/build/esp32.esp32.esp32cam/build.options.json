@@ -1,0 +1,10 @@
+{
+  "additionalFiles": "",
+  "builtInLibrariesFolders": "C:\\Users\\ManhHung\\AppData\\Local\\Arduino15\\libraries",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "build.warn_data_percentage=75",
+  "fqbn": "esp32:esp32:esp32cam:CPUFreq=240,FlashFreq=80,FlashMode=qio,PartitionScheme=huge_app,DebugLevel=none,EraseFlash=none",
+  "hardwareFolders": "c:\\Users\\ManhHung\\AppData\\Local\\Arduino15\\packages",
+  "otherLibrariesFolders": "c:\\Users\\ManhHung\\OneDrive\\Documents\\Arduino\\libraries",
+  "sketchLocation": "F:\\Hệ Thống Nhúng IoT Rasspberry Esp32\\Diem_danh_sinh_vien_bang_van_tay_esp32"
+}

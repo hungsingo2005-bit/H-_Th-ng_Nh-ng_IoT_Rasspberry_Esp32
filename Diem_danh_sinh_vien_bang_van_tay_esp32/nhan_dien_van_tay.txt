@@ -1,0 +1,55 @@
+#include <Adafruit_Fingerprint.h>
+
+HardwareSerial mySerial(2);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+#define LED_PIN 2
+
+void setup() {
+  Serial.begin(115200);
+  mySerial.begin(57600, SERIAL_8N1, 16, 17);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.println("=== NHAN DIEN VAN TAY ===");
+
+  finger.begin(57600);
+
+  if (finger.verifyPassword()) {
+    Serial.println("San sang quet...");
+  } else {
+    Serial.println("Loi cam bien");
+    while (1);
+  }
+}
+
+void loop() {
+  int id = getFingerprintID();
+
+  if (id != -1) {
+    Serial.print("Dung ID: ");
+    Serial.println(id);
+
+    // BẬT LED
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("LED ON");
+
+    delay(3000);
+
+    // TẮT LED
+    digitalWrite(LED_PIN, LOW);
+    Serial.println("LED OFF");
+  }
+}
+
+int getFingerprintID() {
+  if (finger.getImage() != FINGERPRINT_OK) return -1;
+  if (finger.image2Tz() != FINGERPRINT_OK) return -1;
+  if (finger.fingerSearch() != FINGERPRINT_OK) {
+    Serial.println("Sai van tay");
+    return -1;
+  }
+
+  return finger.fingerID;
+}

@@ -1,0 +1,143 @@
+#include <Adafruit_Fingerprint.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// ================= GPIO CONFIG =================
+#define FP_RX 16
+#define FP_TX 17
+
+#define I2C_SDA 21
+#define I2C_SCL 22
+
+#define LED_OK 26
+#define LED_FAIL 25
+#define LED_BLUE 2
+
+// ================= OBJECT =================
+HardwareSerial mySerial(2);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ================= NAME MAP =================
+String getName(int id) {
+  switch(id) {
+    case 1: return "Le Nguyen Manh Hung";
+    case 2: return "Le Quang Huan";
+    case 3: return "Pham Minh Quan";
+    default: return "Khong xac dinh!";
+  }
+}
+
+// ================= SETUP =================
+void setup() {
+  Serial.begin(115200);
+
+  mySerial.begin(57600, SERIAL_8N1, FP_RX, FP_TX);
+  Wire.begin(I2C_SDA, I2C_SCL);
+
+  pinMode(LED_OK, OUTPUT);
+  pinMode(LED_FAIL, OUTPUT);
+  pinMode(LED_BLUE, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+
+  finger.verifyPassword();
+
+  // 👇 Hiển thị welcome
+  lcd.clear();
+  lcd.setCursor(3,0);
+  lcd.print("Welcome to");
+  lcd.setCursor(3,1);
+  lcd.print("My project");
+
+  // 👇 Nhấp nháy LED trong 2 giây
+  unsigned long startTime = millis();
+  while (millis() - startTime < 3000) {
+    digitalWrite(LED_BLUE, HIGH);
+    delay(200);
+    digitalWrite(LED_BLUE, LOW);
+    delay(200);
+  }
+
+  // 👇 Sau 2 giây → chuyển sang trạng thái sẵn sàng
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Hay cham van tay");
+  lcd.setCursor(0,1);
+  lcd.print("cua ban hihi ^_^");
+
+  digitalWrite(LED_BLUE, HIGH); // sáng luôn
+}
+
+// ================= GET ID =================
+int getID() {
+  uint8_t p = finger.getImage();
+
+  // 👇 Không có ngón tay → bỏ qua
+  if (p == FINGERPRINT_NOFINGER) return -2;
+
+  // 👇 Có ngón tay nhưng lỗi
+  if (p != FINGERPRINT_OK) return -1;
+
+  if (finger.image2Tz() != FINGERPRINT_OK) return -1;
+  if (finger.fingerSearch() != FINGERPRINT_OK) return -1;
+
+  return finger.fingerID;
+}
+
+// ================= LOOP =================
+void loop() {
+  int id = getID();
+
+  // 👇 Không có ngón tay → KHÔNG làm gì
+  if (id == -2) {
+    return;
+  }
+
+  lcd.clear();
+
+  if (id == -1) {
+    // ❌ Sai vân tay
+    lcd.print("Van tay");
+    lcd.setCursor(0,1);
+    lcd.print("khong hop le");
+
+    digitalWrite(LED_FAIL, HIGH);
+    delay(2000);
+    digitalWrite(LED_FAIL, LOW);
+  }
+  else {
+    String name = getName(id);
+
+    if (name == "Khong xac dinh!") {
+      // ⚠️ Có ID nhưng chưa gán tên
+      lcd.print("Khong xac dinh");
+      lcd.setCursor(0,1);
+      lcd.print("ID: ");
+      lcd.print(id);
+
+      digitalWrite(LED_FAIL, HIGH);
+      delay(2000);
+      digitalWrite(LED_FAIL, LOW);
+    }
+    else {
+      // ✅ Thành công
+      lcd.print("Xin chao:");
+      lcd.setCursor(0,1);
+      lcd.print(name);
+
+      digitalWrite(LED_OK, HIGH);
+      delay(3000);
+      digitalWrite(LED_OK, LOW);
+    }
+  }
+
+  // 👇 Quay lại trạng thái chờ
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Hay cham van tay");
+  lcd.setCursor(0,1);
+  lcd.print("cua ban hihi ^_^");
+}
